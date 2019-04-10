@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	RedisGetterCategory     = "Redis"
-	CassandraGetterCategory = "Cassandra"
-	IstioGetterCategory     = "Istio"
-	IstioVAppGetterCategory = "Istio.VApp"
+	RedisGetterCategory        = "Redis"
+	CassandraGetterCategory    = "Cassandra"
+	IstioGetterCategory        = "Istio"
+	IstioVAppGetterCategory    = "Istio.VApp"
+	CustomResponseTimeCategory = "Custom Response Time"
 )
 
 type GetterFactory struct {
@@ -25,6 +26,8 @@ func (f *GetterFactory) CreateEntityGetter(category, name, du string) (alligator
 		return NewRedisEntityGetter(name, du), nil
 	case CassandraGetterCategory:
 		return NewCassandraEntityGetter(name, du), nil
+	case CustomResponseTimeCategory:
+		return NewCustomResponseTimeGetter(name, du), nil
 	case IstioGetterCategory:
 		g := newIstioEntityGetter(name, du)
 		forVapp := false

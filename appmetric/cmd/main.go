@@ -138,6 +138,14 @@ func main() {
 	glog.V(2).Infof("Added cassandraGetter: %+v", cassandraGetter)
 	appClient.AddGetter(cassandraGetter)
 
+	customResponseTimeGetter, err := factory.CreateEntityGetter(addon.CustomResponseTimeCategory, "custome.app.rt", sampleDuration)
+	if err != nil {
+		glog.Errorf("Failed to create Custom App getter: %v", err)
+		return
+	}
+	glog.V(2).Infof("Added customResponseTimeGetter: %+v", customResponseTimeGetter)
+	appClient.AddGetter(customResponseTimeGetter)
+
 	//2. Virtual Application Metrics
 	vappClient := ali.NewAlligator(pclient)
 	vappGetter, err := factory.CreateEntityGetter(addon.IstioVAppGetterCategory, "istio.vapp.metric", sampleDuration)
