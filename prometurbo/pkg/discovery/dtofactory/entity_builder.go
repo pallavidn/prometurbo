@@ -9,7 +9,7 @@ import (
 	"github.com/turbonomic/turbo-go-sdk/pkg/proto"
 )
 
-var keepStandalone = false
+var keepStandalone = true
 
 type entityBuilder struct {
 	// TODO: Add the scope to the property for stitching, which needs corresponding change at kubeturbo side

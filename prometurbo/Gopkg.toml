@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -30,8 +30,8 @@
   name = "github.com/golang/glog"
 
 [[constraint]]
-  branch = "6.1"
   name = "github.com/turbonomic/turbo-go-sdk"
+  branch = "master"
 
 [prune]
   go-tests = true

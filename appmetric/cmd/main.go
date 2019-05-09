@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/golang/glog"
 	"os"
-	"strconv"
+	//"strconv"
 
 	"fmt"
 	"github.com/turbonomic/prometurbo/appmetric/pkg/addon"
@@ -56,25 +56,25 @@ func parseConf() error {
 		return err
 	}
 
-	if len(configfname) > 0 {
-		mconf, err := readConfig(configfname)
-		if err != nil {
-			glog.Errorf("Failed to load config file: %v", err)
-			return err
-		}
-
-		if len(prometheusHost) < 1 {
-			prometheusHost = mconf.Address
-		}
-
-		if port < 1 && len(mconf.Port) > 1 {
-			port, err = strconv.Atoi(mconf.Port)
-			if err != nil {
-				glog.Errorf("Failed to convert port from string to int: %v", err)
-				return err
-			}
-		}
-	}
+	//if len(configfname) > 0 {
+	//	mconf, err := readConfig(configfname)
+	//	if err != nil {
+	//		glog.Errorf("Failed to load config file: %v", err)
+	//		return err
+	//	}
+	//
+	//	if len(prometheusHost) < 1 {
+	//		prometheusHost = mconf.Address
+	//	}
+	//
+	//	if port < 1 && len(mconf.Port) > 1 {
+	//		port, err = strconv.Atoi(mconf.Port)
+	//		if err != nil {
+	//			glog.Errorf("Failed to convert port from string to int: %v", err)
+	//			return err
+	//		}
+	//	}
+	//}
 
 	if len(prometheusHost) < 1 {
 		err := fmt.Errorf("Failed to get prometheus server address")
