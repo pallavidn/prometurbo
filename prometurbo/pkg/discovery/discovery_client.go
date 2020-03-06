@@ -153,18 +153,24 @@ func entityCountByType(entities []*proto.EntityDTO) map[string]int {
 	return types
 }
 
-func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.EntityMetric) ([]*proto.EntityDTO, error) {
+//func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.EntityMetric) ([]*proto.EntityDTO, error) {
+func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.CDPEntity) ([]*proto.EntityDTO, error) {
 	var entities []*proto.EntityDTO
 	businessAppMap := make(map[string][]*proto.EntityDTO)
 
 	for _, metric := range metrics {
-		dtos, err := dtofactory.NewEntityBuilder(d.keepStandalone, d.scope, metric).Build()
+		entityMetric := exporter.ConvertFromCDPMetric(metric)
+		if entityMetric == nil {
+			continue
+		}
+		glog.Infof("%++v", entityMetric)
+		dtos, err := dtofactory.NewEntityBuilder(d.keepStandalone, d.scope, entityMetric).Build()
 		if err != nil {
 			glog.Errorf("Error building entity from metric %v: %s", metric, err)
 			continue
 		}
 		//Create a map with key: businessAppName (based on relabeling) and value: vapp dtos
-		if v, ok := metric.Labels["business_app"]; ok {
+		if v, ok := entityMetric.Labels["business_app"]; ok {
 			for _, dto := range dtos {
 				if *dto.EntityType == proto.EntityDTO_VIRTUAL_APPLICATION {
 					businessAppMap[v] = append(businessAppMap[v], dto)

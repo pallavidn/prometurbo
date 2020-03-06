@@ -155,10 +155,26 @@ func (s *MetricServer) sendFailure(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.ResponseWriter, r *http.Request) {
+	////2. put metrics to response
+	//resp := provider.NewMetricResponse()
+	//resp.SetStatus(0, "Success")
+	//resp.SetMetrics(metrics)
+
 	//2. put metrics to response
-	resp := provider.NewMetricResponse()
-	resp.SetStatus(0, "Success")
-	resp.SetMetrics(metrics)
+	resp := provider.NewCDPMetricResponse()
+
+	for _, m := range metrics {
+		cm := provider.ConvertToCDPMetric(m)
+		resp.AddMetric(cm)
+
+		// also add vapp for each app
+		service := provider.CreateCDPServiceMetric(m)
+		if service != nil {
+			resp.AddMetric(service)
+		}
+	}
+
+	resp.SetUpdateTime()
 
 	glog.V(4).Infof("content: %s", spew.Sdump(resp))
 
@@ -180,9 +196,11 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 }
 
 func (s *MetricServer) handleMetric(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	targetAddr := params.Get(provider.TargetAddress)
+	//params := r.URL.Query()
+	//targetAddr := "localhost:9090"
+	targetAddr := "10.10.174.106:9090"	//params.Get(provider.TargetAddress)
 
+	fmt.Printf("Provider target %s\n", targetAddr)
 	provider, err := s.providerFactory.NewProvider(targetAddr)
 	if err != nil {
 		glog.Errorf("Failed to create a provider: %v", err)
@@ -190,12 +208,15 @@ func (s *MetricServer) handleMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("########## GetMetrics ###########\n")
 	metrics, err := provider.GetMetrics()
 	if err != nil {
 		glog.Errorf("Failed to get metrics: %v", err)
 		s.sendFailure(w, r)
 		return
 	}
+	fmt.Printf("########## sendMetrics ###########\n")
+	// SEND USING CDP FORMAT
 	s.sendMetrics(metrics, w, r)
 	return
 }
