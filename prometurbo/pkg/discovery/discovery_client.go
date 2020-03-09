@@ -158,11 +158,18 @@ func entityCountByType(entities []*proto.EntityDTO) map[string]int {
 	return types
 }
 
-func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.EntityMetric) ([]*proto.EntityDTO, error) {
+//func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.EntityMetric) ([]*proto.EntityDTO, error) {
+func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.CDPEntity) ([]*proto.EntityDTO, error) {
 	var entities []*proto.EntityDTO
 	var bizAppInfoBySource = dtofactory.BusinessAppInfoBySource{}
 
-	for _, metric := range metrics {
+	for _, entityMetric := range metrics {
+		metric := exporter.ConvertFromCDPMetric(entityMetric)
+		if entityMetric == nil {
+			continue
+		}
+		glog.Infof("%++v", entityMetric)
+
 		bizAppInfo, ok := bizAppInfoBySource[metric.Source]
 		if !ok {
 			// Create a new entry
@@ -192,6 +199,7 @@ func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.EntityMetric) ([]
 				svcName, ok := metric.Labels["service"]
 				if !ok || svcName == "" {
 					continue
+
 				}
 				bizAppInfo.Services[svcName] = entityDTO
 			}

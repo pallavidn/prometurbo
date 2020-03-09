@@ -10,7 +10,8 @@ import (
 )
 
 type MetricExporter interface {
-	Query(targetAddr string, scope string) ([]*EntityMetric, error)
+	Query(targetAddr string, scope string) ([]*CDPEntity, error)
+	//Query(targetAddr string, scope string) ([]*EntityMetric, error)
 	Validate(targetAddr string) error
 }
 
@@ -37,30 +38,43 @@ func (m metricExporter) Validate(targetAddr string) error {
 
 	return nil
 }
-
-func (m metricExporter) Query(targetAddr string, scope string) ([]*EntityMetric, error) {
+func (m metricExporter) Query(targetAddr string, scope string) ([]*CDPEntity, error) {
+//func (m metricExporter) Query(targetAddr string, scope string) ([]*EntityMetric, error) {
 	params := map[string]string{TargetAddress: targetAddr, Scope: scope}
 	resp, err := sendRequest(m.endpoint, params)
 	if err != nil {
 		return nil, err
 	}
 
-	var mr MetricResponse
+	var mr CDPMetricResponse
 	if err := json.Unmarshal(resp, &mr); err != nil {
 		glog.Errorf("Failed to un-marshal bytes from target [%s]: %v", targetAddr, string(resp))
 		return nil, err
 	}
-	if mr.Status != 0 || len(mr.Data) < 1 {
+	if mr.Topology == nil {
 		glog.Errorf("Failed to un-marshal MetricResponse from target [%s]: %+v", targetAddr, string(resp))
 		return nil, nil
 	}
 
-	glog.V(4).Infof("mr=%+v, len=%d\n", mr, len(mr.Data))
-	for i, e := range mr.Data {
+	glog.V(4).Infof("mr=%+v, len=%d\n", mr, len(mr.Topology))
+	for i, e := range mr.Topology {
 		glog.V(4).Infof("[%d] %+v\n", i, e)
 	}
 
-	return mr.Data, nil
+	return mr.Topology, nil
+
+	//var mr MetricResponse
+	//if mr.Status != 0 || len(mr.Data) < 1 {
+	//	glog.Errorf("Failed to un-marshal MetricResponse from target [%s]: %+v", targetAddr, string(resp))
+	//	return nil, nil
+	//}
+	//
+	//glog.V(4).Infof("mr=%+v, len=%d\n", mr, len(mr.Data))
+	//for i, e := range mr.Data {
+	//	glog.V(4).Infof("[%d] %+v\n", i, e)
+	//}
+	//
+	//return mr.Data, nil
 }
 
 // Send a request to the given endpoint. Params are encoded as query parameters
