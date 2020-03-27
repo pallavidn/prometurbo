@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/turbonomic/prometurbo/appmetric/pkg/config"
+	"github.com/turbonomic/turbo-go-sdk/pkg/dataingestionframework/data"
 )
 
 type BusinessTopologyEditor struct {
 	BizAppConfBySource config.BusinessAppConfBySource
 }
 
-func (b *BusinessTopologyEditor) BuildCDPEntities() []*CDPEntity {
-	var bizEntities []*CDPEntity
+func (b *BusinessTopologyEditor) BuildCDPEntities() []*data.DIFEntity {
+	var bizEntities []*data.DIFEntity
 
 	transToAppsMap := make(map[string][]string)
 	svcToTransMap := make(map[string][]string)
@@ -57,7 +58,7 @@ func (b *BusinessTopologyEditor) BuildCDPEntities() []*CDPEntity {
 				if bizTransEntity == nil {
 					glog.Infof("### NIL BIZ TRANS for %s\n", bizTrans.Path)
 				} else {
-					glog.Infof("### %s", CDPEntityToString(bizTransEntity))
+					glog.Infof("### %s", DIFEntityToString(bizTransEntity))
 				}
 				bizEntities = append(bizEntities, bizTransEntity)
 			}
@@ -73,8 +74,8 @@ func (b *BusinessTopologyEditor) BuildCDPEntities() []*CDPEntity {
 	return bizEntities
 }
 
-func BizAppToCDPMetric(bizApp *config.BusinessApplication) *CDPEntity {
-	cm := &CDPEntity{
+func BizAppToCDPMetric(bizApp *config.BusinessApplication) *data.DIFEntity {
+	cm := &data.DIFEntity{
 		UID:  fmt.Sprintf("%s:%s", bizApp.Name, bizApp.From),
 		Type: "businessApplication",
 		Name: bizApp.Name,
@@ -83,21 +84,21 @@ func BizAppToCDPMetric(bizApp *config.BusinessApplication) *CDPEntity {
 	return cm
 }
 
-func ServiceToCDPMetric(service string, bizApps, bizTxs []string) *CDPEntity {
-	cm := &CDPEntity{
+func ServiceToCDPMetric(service string, bizApps, bizTxs []string) *data.DIFEntity {
+	cm := &data.DIFEntity{
 		UID:  service,
 		Type: "service",
 		Name: service,
 	}
 	for _, bizApp := range bizApps {
-		parent := &CDPPartOf{
+		parent := &data.DIFPartOf{
 			ParentEntity: "businessApplication",
 			UniqueId:     bizApp,
 		}
 		cm.PartOf = append(cm.PartOf, parent)
 	}
 	for _, bizTx := range bizTxs {
-		parent := &CDPPartOf{
+		parent := &data.DIFPartOf{
 			ParentEntity: "businessTransaction",
 			UniqueId:     bizTx,
 		}
@@ -107,20 +108,20 @@ func ServiceToCDPMetric(service string, bizApps, bizTxs []string) *CDPEntity {
 	return cm
 }
 
-func BizTransToCDPMetric(bizTrans config.Transaction, bizApps []string) *CDPEntity {
-	var transEntity *CDPEntity
+func BizTransToCDPMetric(bizTrans config.Transaction, bizApps []string) *data.DIFEntity {
+	var transEntity *data.DIFEntity
 	name := bizTrans.Name
 	if name == "" {
 		name = bizTrans.Path
 	}
-	transEntity = &CDPEntity{
+	transEntity = &data.DIFEntity{
 		UID:  bizTrans.Path,
 		Type: "businessTransaction",
 		Name: name,
 	}
 	if bizApps != nil {
 		for _, bizApp := range bizApps {
-			parent := &CDPPartOf{
+			parent := &data.DIFPartOf{
 				ParentEntity: "businessApplication",
 				UniqueId:     bizApp,
 			}

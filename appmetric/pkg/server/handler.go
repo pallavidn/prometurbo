@@ -162,10 +162,10 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 	//resp.SetMetrics(metrics)
 
 	//2. put metrics to response
-	resp := provider.NewCDPMetricResponse()
+	resp := provider.NewDIFMetricResponse()
 	svcMetrics := make(map[string]map[string]*provider.EntityMetric) //map of svcName, svcIP, appMetric
 	for _, m := range metrics {
-		cm := provider.ConvertToCDPMetric(m)
+		cm := provider.ConvertToDIFMetric(m)
 		resp.AddMetric(cm)
 		svcName, exists := m.Labels["service"]
 		if exists {	//service label exists
@@ -186,7 +186,7 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 	}
 	// also add vapp for each app
 	for svcName, svcMap := range svcMetrics {
-		service := provider.CreateCDPServiceMetric2(svcName, svcMap)
+		service := provider.CreateDIFServiceMetric(svcName, svcMap)
 		if service != nil {
 			resp.AddMetric(service)
 		}
@@ -199,7 +199,7 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 			if entity == nil {
 				continue
 			}
-			glog.Infof("%s", provider.CDPEntityToString(entity))
+			glog.Infof("%s", provider.DIFEntityToString(entity))
 			resp.AddMetric(entity)
 		}
 	}
