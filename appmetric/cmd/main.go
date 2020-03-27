@@ -16,17 +16,20 @@ const (
 	defaultPort           = 8081
 	defaultSampleDuration = "3m"
 	defaultConfigPath     = "/etc/appmetric/appmetric.config"
+	defaultBizAppConfigPath     = "/etc/appmetric/businessapp.config"
 )
 
 var (
 	port           int
 	configFileName string
+	bizAppConfigFileName string
 	sampleDuration string
 )
 
 func parseFlags() {
 	flag.IntVar(&port, "port", defaultPort, "port to expose metrics (default 8081)")
 	flag.StringVar(&configFileName, "config", defaultConfigPath, "path to the metrics discovery config file")
+	flag.StringVar(&bizAppConfigFileName, "bizAppConfig", defaultBizAppConfigPath, "path to the business topology config file")
 	flag.StringVar(&sampleDuration, "sampleDuration", defaultSampleDuration, "the sample duration for prometheus query")
 	flag.Parse()
 }
@@ -68,6 +71,17 @@ func main() {
 	}
 	glog.V(2).Infof("%s", spew.Sdump(metricConf))
 
+	bizAppConfBySource, err := config.NewBusinessApplicationConfForCDP(bizAppConfigFileName)
+	if err != nil {
+		glog.Warningf("Failed to create business application configuration: %v", err)
+	} else {
+		glog.V(2).Infof("Business application configuration: %s",
+			spew.Sdump(bizAppConfBySource))
+	}
+	topologyEditor := &provider.BusinessTopologyEditor{
+		BizAppConfBySource: bizAppConfBySource,
+	}
+
 	// Construct exporter provider from configuration
 	promExporters, err := provider.ExportersFromConfig(metricConf)
 	if err != nil {
@@ -76,6 +90,8 @@ func main() {
 
 	// Start metric server to serve entity metrics queries
 	s := server.NewMetricServer(port, provider.NewProviderFactory(promExporters))
+	s.TopologyEditor = topologyEditor
+
 	s.Run()
 	return
 }

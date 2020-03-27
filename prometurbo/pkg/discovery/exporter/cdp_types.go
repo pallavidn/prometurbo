@@ -81,18 +81,19 @@ const (
 
 var CDPEntityType = map[proto.EntityDTO_EntityType]string{
 	proto.EntityDTO_VIRTUAL_MACHINE:      "virtualMachine",
-	proto.EntityDTO_APPLICATION:          "application",
+	proto.EntityDTO_APPLICATION_COMPONENT:          "application",
 	proto.EntityDTO_BUSINESS_APPLICATION: "businessApplication",
 	proto.EntityDTO_DATABASE_SERVER:      "databaseServer",
-	proto.EntityDTO_VIRTUAL_APPLICATION:  "service",
+	proto.EntityDTO_SERVICE:  "service",
 }
 
 var ReverseCDPEntityType = map[string]proto.EntityDTO_EntityType{
 	"virtualMachine":      proto.EntityDTO_VIRTUAL_MACHINE,
-	"application":         proto.EntityDTO_APPLICATION,
+	"application":         proto.EntityDTO_APPLICATION_COMPONENT,
 	"businessApplication": proto.EntityDTO_BUSINESS_APPLICATION,
+	"businessTransaction": proto.EntityDTO_BUSINESS_TRANSACTION,
 	"databaseServer":      proto.EntityDTO_DATABASE_SERVER,
-	"service":             proto.EntityDTO_VIRTUAL_APPLICATION,
+	"service":             proto.EntityDTO_SERVICE,
 }
 
 type CDPHostType string
@@ -155,8 +156,8 @@ func (r *CDPMetricResponse) AddMetric(m *CDPEntity) {
 }
 
 func ConvertFromCDPMetric(m *CDPEntity) *EntityMetric {
-	if m.Type != "application" {
-		//glog.Errorf("Skip vm/service entity %s\n", m.Type)
+	if m.Type == "service" || m.Type == "virtualMachine" {
+		glog.Errorf("Skip vm/service entity %s\n", m.Type)
 		return nil
 	}
 

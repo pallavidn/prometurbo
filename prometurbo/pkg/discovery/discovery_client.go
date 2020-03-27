@@ -159,17 +159,16 @@ func entityCountByType(entities []*proto.EntityDTO) map[string]int {
 }
 
 //func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.EntityMetric) ([]*proto.EntityDTO, error) {
-func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.CDPEntity) ([]*proto.EntityDTO, error) {
+func (d *P8sDiscoveryClient) buildEntities( metrics []*exporter.CDPEntity) ([]*proto.EntityDTO, error) {
 	var entities []*proto.EntityDTO
 	var bizAppInfoBySource = dtofactory.BusinessAppInfoBySource{}
 
 	for _, entityMetric := range metrics {
 		metric := exporter.ConvertFromCDPMetric(entityMetric)
-		if entityMetric == nil {
+		if metric == nil {
 			continue
 		}
-		glog.Infof("%++v", entityMetric)
-
+		glog.Infof("metric: %s:%s", metric.Type, metric.UID)
 		bizAppInfo, ok := bizAppInfoBySource[metric.Source]
 		if !ok {
 			// Create a new entry
@@ -201,6 +200,8 @@ func (d *P8sDiscoveryClient) buildEntities(metrics []*exporter.CDPEntity) ([]*pr
 					continue
 
 				}
+				glog.Infof("**** Associating service %s:%s::%s with DTO %s:%s", metric.Type, metric.UID, svcName,
+					entityDTO.GetDisplayName(), entityDTO.GetEntityType())
 				bizAppInfo.Services[svcName] = entityDTO
 			}
 		}

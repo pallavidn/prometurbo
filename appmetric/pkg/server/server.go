@@ -18,6 +18,9 @@ type MetricServer struct {
 	host string
 
 	providerFactory ProviderCreator
+
+	// Business topology config
+	TopologyEditor *provider.BusinessTopologyEditor
 }
 
 type ProviderCreator interface {

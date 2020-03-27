@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/turbonomic/turbo-go-sdk/pkg/proto"
 	"html/template"
 	"io"
 	"net/http"
@@ -162,18 +163,48 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 
 	//2. put metrics to response
 	resp := provider.NewCDPMetricResponse()
-
+	svcMetrics := make(map[string]map[string]*provider.EntityMetric) //map of svcName, svcIP, appMetric
 	for _, m := range metrics {
 		cm := provider.ConvertToCDPMetric(m)
 		resp.AddMetric(cm)
-
-		// also add vapp for each app
-		service := provider.CreateCDPServiceMetric(m)
+		svcName, exists := m.Labels["service"]
+		if exists {	//service label exists
+			fmt.Printf("*** Application with service label %s\n", m.UID)
+			if _, exists := svcMetrics[svcName]; !exists {
+				svcMetrics[svcName] = make(map[string]*provider.EntityMetric)
+			}
+			svcMetrics[svcName][m.UID] = m
+			//svcIPs[svcName] = append(svcIPs[svcName], ServicePrefix+m.UID)
+		} else { //service label does not exist
+			if m.Type == proto.EntityDTO_APPLICATION_COMPONENT {
+				fmt.Printf("Application without service label %s\n", m.UID)
+				svcName = m.UID
+				svcMetrics[svcName] = make(map[string]*provider.EntityMetric)
+				svcMetrics[svcName][m.UID] = m
+			}
+		}
+	}
+	// also add vapp for each app
+	for svcName, svcMap := range svcMetrics {
+		service := provider.CreateCDPServiceMetric2(svcName, svcMap)
 		if service != nil {
 			resp.AddMetric(service)
 		}
 	}
 
+	bizEntities := s.TopologyEditor.BuildCDPEntities()
+	if bizEntities != nil {
+		glog.Infof("********** BIZ ENTITIES  %d entities\n",  len(bizEntities))
+		for _, entity := range bizEntities {
+			if entity == nil {
+				continue
+			}
+			glog.Infof("%s", provider.CDPEntityToString(entity))
+			resp.AddMetric(entity)
+		}
+	}
+
+	resp.SetScope(metrics[0].Source)
 	resp.SetUpdateTime()
 
 	glog.V(4).Infof("content: %s", spew.Sdump(resp))
@@ -197,6 +228,7 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 
 func (s *MetricServer) handleMetric(w http.ResponseWriter, r *http.Request) {
 	//params := r.URL.Query()
+	//targetAddr := params.Get(provider.TargetAddress)
 	//targetAddr := "localhost:9090"
 	targetAddr := "10.10.174.106:9090"	//params.Get(provider.TargetAddress)
 

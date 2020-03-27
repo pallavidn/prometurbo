@@ -4,35 +4,37 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/turbonomic/turbo-go-sdk/pkg/proto"
-
+	"strings"
 	"time"
 )
 
+// TODO: USse the common DIF Data
 type CDPEntity struct {
 	UID  string `json:"uniqueId"`
 	Type string `json:"type"`
 	Name string `json:"name"`
 
-	HostedOn *CDPHostedOn	`json:"hostedOn"`
-	MatchingIdentifiers *CDPMatchingIdentifiers `json:"matchIdentifiers"`
-	PartOf []*CDPPartOf	`json:"partOf"`
-	Metrics             []map[string][]*CDPMetricEntry	`json:"metrics,omitempty"`
+	HostedOn            *CDPHostedOn                   `json:"hostedOn"`
+	MatchingIdentifiers *CDPMatchingIdentifiers        `json:"matchIdentifiers"`
+	PartOf              []*CDPPartOf                   `json:"partOf"`
+	Metrics             []map[string][]*CDPMetricEntry `json:"metrics,omitempty"`
+	Source              string
 	//Metrics  map[string][]*CDPMetricEntry `json:"metrics,omitempty"`
 }
 
 type CDPMatchingIdentifiers struct {
-	IPAddress string 	`json:"ipAddress"`
+	IPAddress string `json:"ipAddress"`
 }
 
 type CDPHostedOn struct {
 	HostType  []string `json:"hostType"`
 	IPAddress string   `json:"ipAddress"`
-	HostUuid string		`json:"hostUuid"`
+	HostUuid  string   `json:"hostUuid"`
 }
 
 type CDPPartOf struct {
-	ParentEntity string	`json:"entity"`
-	UniqueId string 	`json:"uniqueId"`
+	ParentEntity string `json:"entity"`
+	UniqueId     string `json:"uniqueId"`
 }
 
 type CDPMetric struct {
@@ -49,7 +51,6 @@ type CDPMetricEntryWithKey interface {
 }
 
 type CDPMetricWithRawData interface {
-
 }
 
 type CDPMetricEntry struct {
@@ -74,23 +75,25 @@ type CDPMetricUnit string
 const (
 	COUNT CDPMetricUnit = "count"
 	TPS   CDPMetricUnit = "tps"
-	MS   CDPMetricUnit  = "ms"
-	MB   CDPMetricUnit  = "mb"
+	MS    CDPMetricUnit = "ms"
+	MB    CDPMetricUnit = "mb"
 	MHZ   CDPMetricUnit = "mhz"
 	PCT   CDPMetricUnit = "pct"
 )
 
 var CDPEntityType = map[proto.EntityDTO_EntityType]string{
-	proto.EntityDTO_VIRTUAL_MACHINE:          "virtualMachine",
-	proto.EntityDTO_APPLICATION:          "application",
-	proto.EntityDTO_BUSINESS_APPLICATION: "businessApplication",
-	proto.EntityDTO_DATABASE_SERVER:      "databaseServer",
-	proto.EntityDTO_VIRTUAL_APPLICATION:  "service",
+	proto.EntityDTO_VIRTUAL_MACHINE:       "virtualMachine",
+	proto.EntityDTO_APPLICATION_COMPONENT: "application",
+	proto.EntityDTO_BUSINESS_APPLICATION:  "businessApplication",
+	proto.EntityDTO_BUSINESS_TRANSACTION:  "businessTransaction",
+	proto.EntityDTO_DATABASE_SERVER:       "databaseServer",
+	proto.EntityDTO_SERVICE:               "service",
 }
 
 type CDPHostType string
+
 const (
-	VM CDPHostType = "virtualMachine"
+	VM        CDPHostType = "virtualMachine"
 	CONTAINER CDPHostType = "container"
 )
 
@@ -104,12 +107,13 @@ var CDPMetricType = map[proto.CommodityDTO_CommodityType]string{
 	proto.CommodityDTO_COLLECTION_TIME:   "collectionTime",
 	proto.CommodityDTO_DB_MEM:            "dbMem",
 	proto.CommodityDTO_DB_CACHE_HIT_RATE: "dbCacheHitRate",
+	proto.CommodityDTO_CONNECTION: "connection",
 }
 
 type CDPMetricResponse struct {
 	Version    string `json:"version"`
 	UpdateTime int64  `json:"updatetime"`
-
+	Scope string `json:"scope"`
 	Topology []*CDPEntity `json:"topology"`
 }
 
@@ -117,6 +121,7 @@ func NewCDPMetricResponse() *CDPMetricResponse {
 	return &CDPMetricResponse{
 		Version:    "v1",
 		UpdateTime: 0,
+		Scope: "",
 		Topology:   []*CDPEntity{},
 	}
 }
@@ -124,6 +129,10 @@ func NewCDPMetricResponse() *CDPMetricResponse {
 func (r *CDPMetricResponse) SetUpdateTime() {
 	t := time.Now()
 	r.UpdateTime = t.Unix()
+}
+
+func (r *CDPMetricResponse) SetScope(scope string) {
+	r.Scope = scope
 }
 
 func (r *CDPMetricResponse) SetMetrics(dat []*CDPEntity) {
@@ -135,20 +144,18 @@ func (r *CDPMetricResponse) AddMetric(m *CDPEntity) {
 }
 
 func ConvertToCDPMetric(m *EntityMetric) *CDPEntity {
+
 	entityType, exists := CDPEntityType[m.Type]
+
 	if !exists {
 		glog.Errorf("Cannot find entity type for %v\n", m.Type)
 	}
 	cm := &CDPEntity{
-		UID:  m.UID,
-		Type: entityType,
-		Name: m.UID,
+		UID:    m.UID,
+		Type:   entityType,
+		Name:   m.UID,
+		Source: m.Source,
 	}
-	// stitching identifiers
-	matchingIds := &CDPMatchingIdentifiers{
-		IPAddress:m.UID,
-	}
-	cm.MatchingIdentifiers = matchingIds
 
 	//hostedOn
 	hostedOn := &CDPHostedOn{}
@@ -161,18 +168,23 @@ func ConvertToCDPMetric(m *EntityMetric) *CDPEntity {
 
 	// partOf
 	for key, label := range m.Labels {
-		if key == "business_app" {
+		if key == "service" {
 			parent := &CDPPartOf{
 				ParentEntity: key,
-				UniqueId:  label,
+				UniqueId:     label,
 			}
 			cm.PartOf = append(cm.PartOf, parent)
 		}
+		if key == "ip" {
+			matchingIds := &CDPMatchingIdentifiers{
+				IPAddress: m.UID,
+			}
+			cm.MatchingIdentifiers = matchingIds
+		}
 	}
-	// hosted on
 
 	// metrics
-	var cdpMetrics []map[string][]*CDPMetricEntry//make(map[string][]*CDPMetricEntry)
+	var cdpMetrics []map[string][]*CDPMetricEntry
 	for comm, metric := range m.Metrics {
 		var meList []*CDPMetricEntry
 		metricType, exists := CDPMetricType[comm]
@@ -200,7 +212,71 @@ func ConvertToCDPMetric(m *EntityMetric) *CDPEntity {
 	return cm
 }
 
-func CreateCDPServiceMetric(m *EntityMetric) *CDPEntity {
+func CreateCDPServiceMetric2(svcName string, metrics map[string]*EntityMetric) *CDPEntity {
+
+	entityType := "service"
+
+	cm := &CDPEntity{
+		UID:  svcName,
+		Type: entityType,
+		Name: svcName,
+	}
+
+	ServicePrefix := "Service-"
+	// stitching identifiers
+	var matchingIds *CDPMatchingIdentifiers
+	var svcIPs []string
+	for svcIP, _ := range metrics {
+		svcIPs = append(svcIPs, ServicePrefix+svcIP)
+	}
+	matchingIds = &CDPMatchingIdentifiers{
+		IPAddress: strings.Join(svcIPs, ","),
+	}
+	cm.MatchingIdentifiers = matchingIds
+
+	var svcMetricsMap map[string][]*CDPMetricEntry
+	svcMetricsMap = make(map[string][]*CDPMetricEntry)
+	for _, m := range metrics {
+		cm.Source = m.Source
+		for comm, metric := range m.Metrics {
+			var meList []*CDPMetricEntry
+			metricType, exists := CDPMetricType[comm]
+			if !exists {
+				fmt.Printf("Cannot find metric type for comm %v\n", comm)
+			}
+
+			me := &CDPMetricEntry{}
+
+			for key, val := range metric {
+				if key == "used" {
+					me.Average = val
+				} else if key == "capacity" {
+					me.Capacity = val
+				}
+			}
+
+			if _, exists := svcMetricsMap[metricType]; !exists {
+				svcMetricsMap[metricType] = []*CDPMetricEntry{}
+			}
+			meList = svcMetricsMap[metricType]
+			meList = append(meList, me)
+			svcMetricsMap[metricType] = meList
+		}
+	}
+
+	var cdpMetrics []map[string][]*CDPMetricEntry
+	for metricType, meList := range svcMetricsMap {
+		meMap := make(map[string][]*CDPMetricEntry)
+		meMap[metricType] = meList
+		cdpMetrics = append(cdpMetrics, meMap)
+	}
+	cm.Metrics = cdpMetrics
+
+	//fmt.Printf("%s --> %++v\n", cm.Source, cm)
+	return cm
+}
+
+func CreateCDPServiceMetric(svcName string, svcIPs []string, m *EntityMetric) *CDPEntity {
 	entityType, exists := CDPEntityType[m.Type]
 	if !exists {
 		glog.Errorf("Cannot find entity type for %v\n", m.Type)
@@ -210,19 +286,48 @@ func CreateCDPServiceMetric(m *EntityMetric) *CDPEntity {
 		return nil
 	}
 	entityType = "service"
+
+	uid := svcName
+	if svcName == "" {
+		uid = m.UID
+	}
 	cm := &CDPEntity{
-		UID:  m.UID,
-		Type: entityType,
-		Name: m.UID,
+		UID:    uid,
+		Type:   entityType,
+		Name:   uid,
+		Source: m.Source,
 	}
+
+	ServicePrefix := "Service-"
 	// stitching identifiers
-	matchingIds := &CDPMatchingIdentifiers{
-		IPAddress:m.UID,
+	var matchingIds *CDPMatchingIdentifiers
+	if svcIPs == nil || len(svcIPs) == 0 {
+		matchingIds = &CDPMatchingIdentifiers{
+			IPAddress: ServicePrefix + m.UID,
+		}
+	} else {
+		matchingIds = &CDPMatchingIdentifiers{
+			IPAddress: strings.Join(svcIPs, ","),
+		}
 	}
+
 	cm.MatchingIdentifiers = matchingIds
+
+	// partOf
+	for key, label := range m.Labels {
+		if key == "service" {
+			parent := &CDPPartOf{
+				ParentEntity: key,
+				UniqueId:     label,
+			}
+			cm.PartOf = append(cm.PartOf, parent)
+		}
+	}
 
 	// metrics
 	var cdpMetrics []map[string][]*CDPMetricEntry
+	var svcMetricsMap map[string][]*CDPMetricEntry
+	svcMetricsMap = make(map[string][]*CDPMetricEntry)
 	for comm, metric := range m.Metrics {
 		var meList []*CDPMetricEntry
 		metricType, exists := CDPMetricType[comm]
@@ -240,12 +345,41 @@ func CreateCDPServiceMetric(m *EntityMetric) *CDPEntity {
 			}
 		}
 
+		if _, exists := svcMetricsMap[metricType]; !exists {
+			svcMetricsMap[metricType] = []*CDPMetricEntry{}
+		}
+		meList = svcMetricsMap[metricType]
 		meList = append(meList, me)
+		svcMetricsMap[metricType] = meList
+	}
+
+	for metricType, meList := range svcMetricsMap {
 		meMap := make(map[string][]*CDPMetricEntry)
 		meMap[metricType] = meList
 		cdpMetrics = append(cdpMetrics, meMap)
+		//cdpMetrics = append(cdpMetrics, meList)
 	}
 
 	cm.Metrics = cdpMetrics
+	fmt.Printf("%s --> %++v\n", m.Source, cm)
 	return cm
+}
+
+
+func CDPEntityToString(entity *CDPEntity) string {
+	var s string
+	s = fmt.Sprintf("[%s]%s:%s\n", entity.Type, entity.UID, entity.Name)
+
+	if entity.PartOf != nil {
+		s += fmt.Sprintf("	PartOf:\n")
+		for _, partOf := range entity.PartOf {
+			s += fmt.Sprintf("		%s:%s\n", partOf.ParentEntity, partOf.UniqueId)
+		}
+	}
+
+	if entity.HostedOn != nil {
+		s += fmt.Sprintf("		%s:%s\n", entity.HostedOn.HostUuid, entity.HostedOn.IPAddress)
+	}
+
+	return s
 }
