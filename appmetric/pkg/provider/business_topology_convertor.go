@@ -58,7 +58,7 @@ func (b *BusinessTopologyEditor) BuildCDPEntities() []*data.DIFEntity {
 				if bizTransEntity == nil {
 					glog.Infof("### NIL BIZ TRANS for %s\n", bizTrans.Path)
 				} else {
-					glog.Infof("### %s", DIFEntityToString(bizTransEntity))
+					glog.Infof("### %s", bizTransEntity.String())
 				}
 				bizEntities = append(bizEntities, bizTransEntity)
 			}

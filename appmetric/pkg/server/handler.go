@@ -199,7 +199,7 @@ func (s *MetricServer) sendMetrics(metrics []*provider.EntityMetric, w http.Resp
 			if entity == nil {
 				continue
 			}
-			glog.Infof("%s", provider.DIFEntityToString(entity))
+			glog.Infof("%s", entity.String())
 			resp.AddMetric(entity)
 		}
 	}
@@ -230,7 +230,8 @@ func (s *MetricServer) handleMetric(w http.ResponseWriter, r *http.Request) {
 	//params := r.URL.Query()
 	//targetAddr := params.Get(provider.TargetAddress)
 	//targetAddr := "localhost:9090"
-	targetAddr := "10.10.174.106:9090"	//params.Get(provider.TargetAddress)
+	//http://10.10.170.117:9090/
+	targetAddr := "10.10.170.117:9090"	//"10.10.174.106:9090"	//params.Get(provider.TargetAddress)
 
 	fmt.Printf("Provider target %s\n", targetAddr)
 	provider, err := s.providerFactory.NewProvider(targetAddr)

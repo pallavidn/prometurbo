@@ -101,7 +101,7 @@ func ConvertToDIFMetric(m *EntityMetric) *data.DIFEntity {
 
 	if m.HostedOnVM{
 		fmt.Printf("Creating hosted on %s\n", m.UID)
-		hostedOn.HostType = append(hostedOn.HostType, string(VM))
+		hostedOn.HostType = append(hostedOn.HostType, data.VM)
 		hostedOn.IPAddress = m.UID
 		cm.HostedOn = hostedOn
 	}
@@ -124,7 +124,8 @@ func ConvertToDIFMetric(m *EntityMetric) *data.DIFEntity {
 	}
 
 	// metrics
-	var cdpMetrics []map[string][]*data.DIFMetricVal
+	//var cdpMetrics []map[string][]*data.DIFMetricVal
+	meMap := make(map[string][]*data.DIFMetricVal)
 	for comm, metric := range m.Metrics {
 		var meList []*data.DIFMetricVal
 		metricType, exists := CDPMetricType[comm]
@@ -143,12 +144,12 @@ func ConvertToDIFMetric(m *EntityMetric) *data.DIFEntity {
 		}
 
 		meList = append(meList, me)
-		meMap := make(map[string][]*data.DIFMetricVal)
+
 		meMap[metricType] = meList
-		cdpMetrics = append(cdpMetrics, meMap)
+		//cdpMetrics = append(cdpMetrics, meMap)
 	}
 
-	cm.Metrics = cdpMetrics
+	cm.Metrics = meMap
 	return cm
 }
 
@@ -174,8 +175,8 @@ func CreateDIFServiceMetric(svcName string, metrics map[string]*EntityMetric) *d
 	}
 	cm.MatchingIdentifiers = matchingIds
 
-	var svcMetricsMap map[string][]*data.DIFMetricVal
-	svcMetricsMap = make(map[string][]*data.DIFMetricVal)
+	//var svcMetricsMap map[string][]*data.DIFMetricVal
+	svcMetricsMap := make(map[string][]*data.DIFMetricVal)
 	for _, m := range metrics {
 		//cm.Source = m.Source
 		for comm, metric := range m.Metrics {
@@ -204,32 +205,14 @@ func CreateDIFServiceMetric(svcName string, metrics map[string]*EntityMetric) *d
 		}
 	}
 
-	var cdpMetrics []map[string][]*data.DIFMetricVal
-	for metricType, meList := range svcMetricsMap {
-		meMap := make(map[string][]*data.DIFMetricVal)
-		meMap[metricType] = meList
-		cdpMetrics = append(cdpMetrics, meMap)
-	}
-	cm.Metrics = cdpMetrics
+	//var cdpMetrics []map[string][]*data.DIFMetricVal
+	//for metricType, meList := range svcMetricsMap {
+	//	meMap := make(map[string][]*data.DIFMetricVal)
+	//	meMap[metricType] = meList
+	//	cdpMetrics = append(cdpMetrics, meMap)
+	//}
+	cm.Metrics = svcMetricsMap
 
 	//fmt.Printf("%s --> %++v\n", cm.Source, cm)
 	return cm
-}
-
-func DIFEntityToString(entity *data.DIFEntity) string {
-	var s string
-	s = fmt.Sprintf("[%s]%s:%s\n", entity.Type, entity.UID, entity.Name)
-
-	if entity.PartOf != nil {
-		s += fmt.Sprintf("	PartOf:\n")
-		for _, partOf := range entity.PartOf {
-			s += fmt.Sprintf("		%s:%s\n", partOf.ParentEntity, partOf.UniqueId)
-		}
-	}
-
-	if entity.HostedOn != nil {
-		s += fmt.Sprintf("		%s:%s\n", entity.HostedOn.HostUuid, entity.HostedOn.IPAddress)
-	}
-
-	return s
 }

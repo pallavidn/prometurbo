@@ -7,6 +7,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/prometheus/common v0.4.0
 	github.com/turbonomic/turbo-go-sdk v0.0.0-20200211010121-f4a0574eb86e
-	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	gopkg.in/yaml.v2 v2.2.1
 )
+
+replace github.com/turbonomic/turbo-go-sdk => ../../turbo-go-sdk
